@@ -1,0 +1,16 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "candaraa-frontend.vercel",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "candaraa-frontend.vercel",
+  "start_url": "/",
+  "theme_color": "#2766ca",
+  "categories": [
+    "entertainment",
+    "games",
+    "productivity"
+  ]
+}

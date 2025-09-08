@@ -1248,7 +1248,7 @@
                     successMessage.value = '';
                     try {
                         loading.value = true;
-                        window.location.href = 'http://localhost:3000/auth/google';
+                        window.location.href = 'https://candaraa-app.onrender.com/auth/google';
                     } catch (error) {
                         handleApiError(error)
                     } finally {
@@ -1850,7 +1850,7 @@
                     let storedAuth = JSON.parse(localStorage.getItem('auth'));
                     if(!storedAuth) {
                         try{
-                            req = await api.get('http://localhost:3000/auth/tokens')
+                            req = await api.get('https://candaraa-app.onrender.com/auth/tokens')
                             const token = req.data.token;
                             const refreshToken = req.data.refreshToken;
 

@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadaraa - Cultural Trivia & Rewards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="candaraa.css">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+</head>
+<body>
+
+    <div id="app">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-globe-africa"></i>
+                </div>
+                <span>{{ isAdminView ? 'Cadaraa Admin' : 'Cadaraa' }}</span>
+            </div>
+            <div class="header-actions">
+                <div class="user-status">
+                    <i class="fas" :class="isAdminView ? 'fa-user-shield' : 'fa-user'"></i>
+                    <span>{{ user ? user.username : 'Guest' }} ({{ user ? user.role : 'GUEST' }})</span>
+                </div>
+                <button class="theme-toggle" @click="toggleDarkMode">
+                    <i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <aside class="sidebar" v-if="!isAdminView">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        {{ user ? user.username.charAt(0).toUpperCase() : 'G' }}
+                    </div>
+                    <h3 class="user-name">{{ user ? user.username : 'Guest' }}</h3>
+                    <span class="user-role">{{ user ? user.role : 'GUEST' }}</span>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.streak || 0 }}</div>
+                        <div class="stat-label">Day Streak</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.coins || 0 }}</div>
+                        <div class="stat-label">Coins</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.level || 0 }}</div>
+                        <div class="stat-label">Level</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ user.points || 0 }}</div>
+                        <div class="stat-label">Points</div>
+                    </div>
+                </div>
+
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: currentView === 'home' }" @click="setView('home')">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" v-if="user && user.role !== 'GUEST'">
+                        <a href="#" class="nav-link" :class="{ active: currentView === 'wallet' }" @click="loadWallet">
+                            <i class="fas fa-wallet"></i>
+                            <span>Wallet</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: currentView === 'leaderboard' }" @click="loadLeaderboard">
+                            <i class="fas fa-trophy"></i>
+                            <span>Leaderboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" v-if="user && user.role === 'ADMIN'">
+                        <a href="#" class="nav-link" :class="{ active: currentView === 'admin' }" @click="setView('admin'); loadAllUsers()">
+                            <i class="fas fa-cog"></i>
+                            <span>Admin Panel</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" v-if="user.role === 'GUEST'">
+                        <a href="#" class="nav-link" :class="{ active: currentView === 'login' }" @click="setView('login')">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Login</span>
+                        </a>
+                    </li>
+                    <li class="nav-item" v-if="user.role !== 'GUEST'">
+                        <a href="#" class="nav-link" @click="logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </li>
+                </ul>
+            </aside>
+
+            <aside class="sidebar" v-else>
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <i class="fas fa-user-cog"></i>
+                    </div>
+                    <h3 class="user-name">{{user?.username}}</h3>
+                    <span class="user-role">Administrator</span>
+                </div>
+
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: adminTab === 'dashboard' }" @click="adminTab = 'dashboard'">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: adminTab === 'questions' }" @click="adminTab = 'questions'; loadAllQuestions()">
+                            <i class="fas fa-question-circle"></i>
+                            <span>Questions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: adminTab === 'users' }" @click="adminTab = 'users'; loadAllUsers()">
+                            <i class="fas fa-users"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" :class="{ active: adminTab === 'transactions' }" @click="adminTab = 'transactions'; loadAllTransactions()">
+                            <i class="fas fa-exchange-alt"></i>
+                            <span>Transactions</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" @click="setView('home')">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Back to App</span>
+                        </a>
+                    </li>
+                </ul>
+            </aside>
+
+            <main class="content">
+                <div v-if="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Processing...</p>
+                </div>
+
+                <div v-if="errorMessage" class="alert alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>{{ errorMessage }}</span>
+                </div>
+                
+                <div v-if="successMessage" class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{ successMessage }}</span>
+                </div>
+
+                <!-- Home View -->
+                <div class="view" :class="{ active: currentView === 'home' && !isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-home section-icon"></i>
+                            Welcome to Cadaraa
+                        </h2>
+                    </div>
+
+                    <div class="card">
+                        <p>Test your knowledge about African and European cultures with our engaging trivia game!</p>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg btn-full" @click="startGame">
+                        <i class="fas fa-play"></i> Play Now
+                    </button>
+
+                    <div class="card" v-if="user.role === 'GUEST'">
+                        <h3 class="card-header">
+                            <i class="fas fa-crown"></i>
+                            Premium Benefits
+                        </h3>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> Unlimited gameplay</li>
+                            <li><i class="fas fa-check"></i> Earn and convert coins to tokens</li>
+                            <li><i class="fas fa-check"></i> Access to leaderboards</li>
+                            <li><i class="fas fa-check"></i> Advanced levels and tournaments</li>
+                        </ul>
+                        <button class="btn btn-outline btn-full" @click="setView('login')">
+                            <i class="fas fa-sign-in-alt"></i> Login to Access Premium
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Wallet View -->
+                <div class="view" :class="{ active: currentView === 'wallet' && !isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-wallet section-icon"></i>
+                            My Wallet
+                        </h2>
+                        <button class="btn btn-secondary btn-sm" @click="setView('home')">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="wallet-balance">
+                            <h3 class="card-header">Available Balance</h3>
+                            <div class="balance-amount">{{ user.coins }} coins  ≈  ${{ (user.coins * 0.1).toFixed(2) }} USD</div>
+                           
+                        </div>
+                        
+                        <div class="conversion-rate">
+                            <i class="fas fa-exchange-alt"></i> Conversion Rate: 10 COINS = 1 USD
+                        </div>
+                        
+                        <div class="conversion-form">
+                            <div class="form-group">
+                                <label for="convert-amount" class="form-label">Amount to Convert (Coins 10 minimum)</label>
+                                <input type="number" id="convert-amount" class="form-input" v-model="convertAmount" :max="user.coins" min="10" step="10">
+                            </div>
+                            
+                            <div v-if="convertAmount >= 10" class="conversion-result">
+                                You will receive: {{ (convertAmount / 10).toFixed(2) }} USD which would be converted to USDT
+                            </div>
+                            
+                            <button class="btn btn-primary btn-full" @click="convertCoins" :disabled="convertAmount < 10 || convertAmount > user.coins">
+                                <i class="fas fa-exchange-alt"></i> Convert to Tokens
+                            </button>
+
+                            <p class="card-header wallet-add" v-if="wallet==='' ">Add wallet: <input type="text" v-model="walletAdd" class="form-input"></p> <button v-if="wallet ===''" class='btn btn-primary btn-full' @click="connectWallet">Add</button>
+                            <p class="card-header wallet-add"  v-if="wallet!==''">Update wallet: <input type="text" v-model="walletAdd" class="form-input"></p> <button v-if="wallet !==''" class='btn btn-primary btn-full' @click="updateWallet">Update</button>
+
+                            <p class="card-header wallet-address">Wallet Address: {{wallet}}</p>
+
+
+                            <input type="text" v-model="withdrawAmount" v-if="wallet.walletAddress !== ''" class="form-input">
+                            <button class="btn btn-primary btn-full" v-if="wallet.walletAddress !== '' "@click="withdrawCoins" :disabled="user.usdt < 10 || withdrawAmount > user.coins">
+                                <i class="fas fa-withdraw"></i> Withdraw
+                            </button>
+
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-history"></i>
+                            Transaction History
+                        </h3>
+                        
+                        <div v-if="transactions?.length === 0" class="loading">
+                            No transactions yet
+                        </div>
+                        
+                        <div v-else class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Amount (USD/USDT)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="transaction in transactions" :key="transaction.id">
+                                        <td>{{ transaction.type }}</td>
+                                        <td>{{ transaction.createdAt }}</td>
+                                        <td :class="transaction.amount > 0 ? 'transaction-positive' : 'transaction-negative'">
+                                            {{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }} {{ transaction.currency }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game View -->
+                <div class="view" :class="{ active: currentView === 'game' && !isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-gamepad section-icon"></i>
+                            Trivia Challenge
+                        </h2>
+                        <button class="btn btn-secondary btn-sm" @click="setView('home')">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                    
+                    <div class="game-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ currentQuestionIndex + 1 }}/{{ questions.length }}</div>
+                            <div class="stat-label">Question</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ user.points }}</div>
+                            <div class="stat-label">Points</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ timeLeft }}</div>
+                            <div class="stat-label">Seconds</div>
+                        </div>
+                    </div>
+
+                    <div class="question-card">
+                        <div class="question-text">{{ currentQuestion.prompt }}</div>
+                        <div class="answer-buttons">
+                            <button class="answer-btn answer-true" @click="checkAnswer(true)">
+                                <i class="fas fa-check"></i> TRUE
+                            </button>
+                            <button class="answer-btn answer-false" @click="checkAnswer(false)">
+                                <i class="fas fa-times"></i> FALSE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard View -->
+                <div class="view" :class="{ active: currentView === 'leaderboard' && !isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-trophy section-icon"></i>
+                            Leaderboard
+                        </h2>
+                        <button class="btn btn-secondary btn-sm" @click="setView('home')">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                    
+                    <div class="tab-container" style="margin-bottom: 1.5rem;">
+                        <button class="btn btn-sm" :class="leaderboardTab === 'global' ? 'btn-primary' : 'btn-secondary'" @click="loadLeaderboard">Global</button>
+                        <button class="btn btn-sm" :class="leaderboardTab === 'regional' ? 'btn-primary' : 'btn-secondary'" @click="loadRegionLeaderboard">Regional</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="leaderboard">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Icon</th>
+                                        <th>Player</th>
+                                        <th>Points</th>
+                                        <th>Level</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(player, index) in leaderboard" :key="player.id">
+                                        <td>{{ index + 1 }}</td>
+                                        <td>
+                                            <div class="user">
+                                                <div class="user-avatar" style="width: 15px; height: 15px; font-size: 0.875rem; padding: 15px; margin-top: 5px;">
+                                                    {{ player.username?.charAt(0) }}
+                                                </div>
+                                               
+                                            </div>
+                                        <td>
+                                            <div class="user-username">{{ player.username }}</div> 
+                                        </td>
+                                        </td>
+                                        <td>{{ player.points }}</td>
+                                        <td>{{ player.level }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div v-if="!user" class="alert alert-warning">
+                        <i class="fas fa-lock"></i> Login to see the full leaderboard and compete globally!
+                    </div>
+                </div>
+
+                <!-- Login View -->
+                <div class="view" :class="{ active: currentView === 'login' && !isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-sign-in-alt section-icon"></i>
+                            Login to Cadaraa
+                        </h2>
+                        <button class="btn btn-secondary btn-sm" @click="setView('home')">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-header">Choose Login Method</h3>
+                        
+                        <div class="auth-options">
+                            <button class="auth-option-btn btn-google" @click="loginWithGoogle">
+                                <i class="fab fa-google"></i> Sign in with Google
+                            </button>
+                            
+                            <button class="auth-option-btn btn-phone" @click.prevent="showSignup = false; showEmailLogin = false; showPhoneLogin = true">
+                                <i class="fas fa-mobile-alt"></i> Sign in with Phone
+                            </button>
+                            
+                            <button class="auth-option-btn btn-email" @click.prevent="showSignup = false; showEmailLogin = true; showPhoneLogin = false">
+                                <i class="fas fa-envelope"></i> Sign in with Email
+                            </button>
+                        </div>
+
+                        <!-- Phone Login Form -->
+                        <div v-if="showPhoneLogin" >
+                            <div class="form-group" v-if="showOtpField === false">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" id="phone" class="form-input" placeholder="+1 234 567 8900" v-model="phoneNumber">
+                            </div> 
+                            
+                            <div v-if="showOtpField">
+                                <div class="otp-container">
+                                    <input v-for="n in 6" :key="n" class="otp-input" maxlength="1" 
+                                        v-model="otp[n-1]" @input="focusNext($event, n)">
+                                </div>
+                                <button class="btn btn-primary btn-full" @click="verifyOtp">Verify OTP</button>
+                                <button class="btn btn-primary btn-full" @click="showOtpField = false ">Resend</button>
+                            </div>
+                            
+                            <button v-else class="btn btn-primary btn-full" @click="sendOtp">Send OTP</button>
+                        </div>
+
+                        <!-- Email Login Form -->
+                        <div v-if="showEmailLogin">
+                            <div class="form-group">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" id="email" class="form-input" placeholder="your@email.com" v-model="email">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" id="password" class="form-input" placeholder="Enter your password" v-model="password">
+                            </div>
+                            
+                            <button class="btn btn-primary btn-full" @click="loginWithEmail">Login</button>
+                            
+                            <p style="text-align: center; margin-top: 15px;">
+                                Don't have an account? <a href="#" @click.prevent="showSignup = true; showEmailLogin = false; showPhoneLogin = false">Sign up</a>
+                            </p>
+                        </div>
+
+                        <!-- Signup Form -->
+                        <div v-if="showSignup" class="sign-up">
+                            <h3 class="card-header">Create Account</h3>
+                            
+                            <div class="form-group">
+                                <label for="signup-name" class="form-label">Username</label>
+                                <input type="text" id="signup-name" class="form-input" placeholder="Your name" v-model="signupName">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="signup-email" class="form-label">Email Address</label>
+                                <input type="email" id="signup-email" class="form-input" placeholder="your@email.com" v-model="signupEmail">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="signup-password" class="form-label">Password</label>
+                                <input type="password" id="signup-password" class="form-input" placeholder="Create a password" v-model="signupPassword">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="confirm-password" class="form-label">Confirm Password</label>
+                                <input type="password" id="confirm-password" class="form-input" placeholder="Confirm your password" v-model="confirmPassword">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="signup-region" class="form-label">Region</label>
+                                <input type="text" id="signup-region" class="form-input" placeholder="Africa or Europe" v-model="signupRegion">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="signup-phone" class="form-label">Phone Number</label>
+                                <input type="text" id="signup-phone" class="form-input" placeholder="Input phone number with country code" v-model="signupPhone">
+                            </div>
+                            
+                            <button class="btn btn-primary btn-full" @click="signupWithEmail">Create Account</button>
+                            
+                            <p style="text-align: center; margin-top: 15px;">
+                                Already have an account? <a href="#" @click.prevent="showSignup = false; showEmailLogin = true; showPhoneLogin = false">Login</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin View -->
+                <div class="view" :class="{ active: isAdminView }">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-cog section-icon"></i>
+                            Admin Dashboard
+                        </h2>
+                    </div>
+
+                    <div class="admin-tabs">
+                        <button class="admin-tab" :class="{ active: adminTab === 'dashboard' }" @click="adminTab = 'dashboard'">
+                            <i class="fas fa-chart-pie"></i> Dashboard
+                        </button>
+                        <button class="admin-tab" :class="{ active: adminTab === 'questions' }" @click="adminTab = 'questions'; loadAllQuestions()">
+                            <i class="fas fa-question-circle"></i> Questions
+                        </button>
+                        <button class="admin-tab" :class="{ active: adminTab === 'users' }" @click="adminTab = 'users'; loadAllUsers()">
+                            <i class="fas fa-users"></i> Users
+                        </button>
+                        <button class="admin-tab" :class="{ active: adminTab === 'transactions' }" @click="adminTab = 'transactions'; loadAllTransactions()">
+                            <i class="fas fa-exchange-alt"></i> Transactions
+                        </button>
+                    </div>
+
+                    <!-- Dashboard Tab -->
+                    <div v-if="adminTab === 'dashboard'">
+                        <div class="admin-grid">
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-value">{{ adminStats.totalUsers }}</div>
+                                <div class="admin-stat-label">Total Users</div>
+                            </div>
+                            
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-value">{{ adminStats.normalUsers }}</div>
+                                <div class="admin-stat-label">Normal Users</div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-value">{{ adminStats.premiumUsers }}</div>
+                                <div class="admin-stat-label">Premium Users</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="card-header">
+                                <i class="fas fa-info-circle"></i>
+                                System Overview
+                            </h3>
+                            <p>Welcome to the Cadaraa Admin Dashboard. Here you can manage questions, users, and view transaction history.</p>
+                            <p>Use the tabs above to navigate between different management sections.</p>
+                        </div>
+                    </div>
+
+                    <!-- Questions Tab -->
+                    <div v-if="adminTab === 'questions'">
+                        <div class="admin-card">
+                            <div class="admin-card-header">
+                                <h3 class="admin-card-title">
+                                    <i class="fas fa-plus-circle"></i> Add New Question
+                                </h3>
+                                <button class="btn btn-primary btn-sm" @click="showAddQuestionForm = !showAddQuestionForm">
+                                    <i class="fas fa-plus"></i> {{ showAddQuestionForm ? 'Cancel' : 'Add Question' }}
+                                </button>
+                            </div>
+
+                            <div class="question-form" v-if="showAddQuestionForm">
+                                <div class="form-group form-full-width">
+                                    <label class="form-label">Question Prompt</label>
+                                    <textarea class="form-input" v-model="newQuestion.prompt" rows="3"></textarea>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Category</label>
+                                    <input type="text" class="form-input" v-model="newQuestion.category">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Correct Answer</label>
+                                    <input type="text" class="form-input" v-model="newQuestion.answer">
+                                </div>
+                                
+                                <div class="form-group form-full-width">
+                                    <label class="form-label">Difficulty</label>
+                                    <div class="difficulty-selector">
+                                        <span v-for="diff in difficultyOptions" :key="diff" 
+                                            class="difficulty-pill" :class="{ active: newQuestion.difficulty?.includes(diff) }"
+                                            @click="toggleDifficulty(diff)">
+                                            {{ diff }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group form-full-width">
+                                    <label class="form-label">Regions</label>
+                                    <div class="region-selector">
+                                        <span v-for="r in regionOptions" :key="r" 
+                                            class="region-pill" :class="{ active: newQuestion.region?.includes(r) }"
+                                            @click="toggleRegion(r)">
+                                            {{ r }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group form-full-width options-container">
+                                    <label class="form-label">Options (if multiple choice)</label>
+                                    <div v-for="(option, index) in newQuestion.options" :key="index" class="option-input">
+                                        <input type="text" class="form-input" v-model="newQuestion.options[index]" 
+                                            :placeholder="'Option ' + (index + 1)">
+                                        <button class="btn btn-danger btn-sm" @click="removeOption(index)" v-if="newQuestion.options.length > 1">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm" @click="addOption">
+                                        <i class="fas fa-plus"></i> Add Option
+                                    </button>
+                                </div>
+                                
+                                <div class="form-full-width">
+                                    <button class="btn btn-primary" @click="addQuestion">
+                                        <i class="fas fa-save"></i> Save Question
+                                    </button>
+                                    <button class="btn btn-secondary" @click="cancelQuestionForm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-card">
+                            <div class="admin-card-header">
+                                <h3 class="admin-card-title">
+                                    <i class="fas fa-list"></i> All Questions
+                                </h3>
+                                <div class="search-box">
+                                    <input type="text" class="form-input" placeholder="Search questions..." v-model="questionSearch">
+                                    <button class="btn btn-primary btn-sm">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Prompt</th>
+                                            <th>Category</th>
+                                            <th>Difficulty</th>
+                                            <th>Regions</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="question in filteredQuestions" :key="question.id">
+                                            <td>{{ question.id }}</td>
+                                            <td>{{ question.prompt }}</td>
+                                            <td>{{ question.category }}</td>
+                                            <td>
+                                                <span v-for="diff in question.difficulty" :key="diff" 
+                                                    class="difficulty-pill">
+                                                    {{ diff }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span v-for="r in question.region" :key="r" 
+                                                    class="region-pill">
+                                                    {{ r }}
+                                                </span>
+                                            </td>
+                                            <td class="action-buttons">
+                                                <button class="btn-icon btn-edit" @click="editQuestion(question)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn-icon btn-delete" @click="deleteQuestion(question.id)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Tab -->
+                    <div v-if="adminTab === 'users'">
+                        <div class="admin-card">
+                            <div class="admin-card-header">
+                                <h3 class="admin-card-title">
+                                    <i class="fas fa-users"></i> User Management
+                                </h3>
+                                <div class="search-box">
+                                    <input type="text" class="form-input" placeholder="Search by username..." v-model="userSearch">
+                                    <!-- <button class="btn btn-primary btn-sm" @click="searchUser">
+                                        <i class="fas fa-search"></i>
+                                    </button> -->
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Region</th>
+                                            <th>Points</th>
+                                            <th>Coins</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="user in filteredUsers" :key="user.id">
+                                            <td>{{ user.id }}</td>
+                                            <td>{{ user.username }}</td>
+                                            <td>{{ user.email }}</td>
+                                            <td>
+                                                <span class="user-role">{{ user.role }}</span>
+                                            </td>
+                                            <td>{{ user.region }}</td>
+                                            <td>{{ user.points }}</td>
+                                            <td>{{ user.coins }}</td>
+                                            <td class="action-buttons">
+                                               
+                                                <button class="btn-icon btn-delete" @click="deleteUser(user.id)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transactions Tab -->
+                    <div v-if="adminTab === 'transactions'">
+                        <div class="admin-card">
+                            <div class="admin-card-header">
+                                <h3 class="admin-card-title">
+                                    <i class="fas fa-exchange-alt"></i> All Transactions
+                                </h3>
+                                <div class="search-box">
+                                    <input type="text" class="form-input" placeholder="Search by user..." v-model="transactionSearch">
+                                    <button class="btn btn-primary btn-sm">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>User</th>
+                                            <th>Type</th>
+                                            <th>Amount</th>
+                                            <th>Details</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="transaction in filteredTransactions" :key="transaction.id">
+                                            <td>{{ transaction.id }}</td>
+                                            <td>{{ transaction.user.username }}</td>
+                                            <td>{{ transaction.type }}</td>
+                                            <td>{{ transaction.amount }}</td>
+                                            <td>{{ transaction.details }}</td>
+                                            <td>{{ formatDate(transaction.createdAt) }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer>
+            <p>© 2025 Cadaraa • Explore Cultures, Earn Rewards</p>
+            <p>Available in Africa and Europe</p>
+        </footer>
+
+        <!-- Question Edit Modal -->
+        <div class="modal-overlay" v-if="showEditModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3 class="modal-title">Edit Question</h3>
+                    <button class="modal-close" @click="showEditModal = false">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="question-form">
+                    <div class="form-group form-full-width">
+                        <label class="form-label">Question Prompt</label>
+                        <textarea class="form-input" v-model="editingQuestion.prompt" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <input type="text" class="form-input" v-model="editingQuestion.category">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Correct Answer</label>
+                        <input type="text" class="form-input" v-model="editingQuestion.answer">
+                    </div>
+                    
+                    <div class="form-group form-full-width">
+                        <label class="form-label">Difficulty</label>
+                        <div class="difficulty-selector">
+                            <span v-for="diff in difficultyOptions" :key="diff" 
+                                class="difficulty-pill" :class="{ active: editingQuestion.difficulty?.includes(diff) }"
+                                @click="toggleEditDifficulty(diff)">
+                                {{ diff }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group form-full-width">
+                        <label class="form-label">Regions</label>
+                        <div class="region-selector">
+                            <span v-for="r in regionOptions" :key="r" 
+                                class="region-pill" :class="{ active: editingQuestion.region?.includes(r) }"
+                                @click="toggleEditRegion(r)">
+                                {{ r }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group form-full-width options-container">
+                        <label class="form-label">Options (if multiple choice)</label>
+                        <div v-for="(option, index) in editingQuestion.options" :key="index" class="option-input">
+                            <input type="text" class="form-input" v-model="editingQuestion.options[index]" 
+                                :placeholder="'Option ' + (index + 1)">
+                            <button class="btn btn-danger btn-sm" @click="removeEditOption(index)" v-if="editingQuestion.options.length > 1">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" @click="addEditOption">
+                            <i class="fas fa-plus"></i> Add Option
+                        </button>
+                    </div>
+                    
+                    <div class="form-full-width">
+                        <button class="btn btn-primary" @click="updateQuestion">
+                            <i class="fas fa-save"></i> Update Question
+                        </button>
+                        <button class="btn btn-secondary" @click="showEditModal = false">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // Main app state
+                const currentView = ref('home');
+                const isAdminView = ref(false);
+                const user = ref({
+                    username: 'Guest',
+                    role: 'GUEST',
+                    coins: 0,
+                    streak: 0,
+                    level: 0,
+                    points: 0,
+                    region: 'none'
+                });
+                const leaderboardTab = ref('global');
+                const score = ref(0);
+                const currentQuestionIndex = ref(0);
+                const timeLeft = ref(15)
+                const showPhoneLogin = ref(false);
+                const showEmailLogin = ref(false);
+                const showOtpField = ref(false);
+                const showSignup = ref(false);
+                const phoneNumber = ref('');
+                const otp = ref(['', '', '', '', '', '']);
+                const email = ref('');
+                const password = ref('');
+                const signupName = ref('');
+                const signupEmail = ref('');
+                const signupPassword = ref('');
+                const confirmPassword = ref('');
+                const signupRegion = ref('');
+                const signupPhone = ref('');
+                let timer = null;
+                const errorMessage = ref('');
+                const successMessage = ref('');
+                const loading = ref(false)
+                const convertAmount = ref(0);
+                const convertCoins = ref(0);
+                const transactions = ref([]);
+                const walletAdd = ref('')
+                const darkMode = ref(false);
+                const wallet = ref("");
+                const playerStats = ref({
+                    streak: 0,
+                    coins: 0,
+                    rank: 0
+                });
+
+                const questions = ref([]);
+                const leaderboard = ref([]);
+                const allUsers = ref([]);
+                const withdrawAmount = ref(0);
+
+
+                // Admin state
+                const adminTab = ref('dashboard');
+                const adminStats = ref({
+                    totalUsers: 1245,
+                    guestUsers: 342,
+                    normalUsers: 678,
+                    premiumUsers: 225
+                });
+                const allAdminUsers = ref([]);
+                const allAdminQuestions = ref([]);
+                const allAdminTransactions = ref([]);
+                const showAddQuestionForm = ref(false);
+                const showEditModal = ref(false);
+                const questionSearch = ref('');
+                const userSearch = ref('');
+                const transactionSearch = ref('');
+                
+                const newQuestion = ref({
+                    prompt: '',
+                    category: '',
+                    answer: '',
+                    difficulty: ['EASY'],
+                    region: ['AFRICA'],
+                    options: ['']
+                });
+                
+                const editingQuestion = ref({
+
+                });
+                const editingQuestionIndex = ref(null)
+                
+                const difficultyOptions = ['GUEST', 'EASY', 'MEDIUM', 'HARD'];
+                const regionOptions = ['AFRICA', 'EUROPE'];
+
+                const API_BASE_URL = 'http://localhost:3000';
+                let auth = JSON.parse(localStorage.getItem("auth"))
+                let token = auth?.token 
+                // Axios instance with base configuration
+                const api = axios.create({
+                    baseURL: API_BASE_URL,
+                    timeout: 10000,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                    },
+                    withCredentials: true
+                });
+
+                function setAuthToken(newToken) {
+                    api.defaults.headers['Authorization'] = `Bearer ${newToken}`;
+                }
+
+                function handleApiError(error) {
+                    console.error('API Error:', error);
+                    if (error.response) {
+                        errorMessage.value = error.response.data.message || 'An error occurred';
+                    } else if (error.request) {
+                        errorMessage.value = 'Network error. Please check your connection.';
+                    } else {
+                        errorMessage.value = 'An unexpected error occurred.';
+                    }
+                    
+                    setTimeout(() => {
+                        errorMessage.value = '';
+                    }, 3000);
+
+                    if (error.response?.data?.message === 'Unauthorized') {
+                        logout()
+                    }
+                }
+
+                function handleSuccess(message){
+                    successMessage.value = message
+
+                    setTimeout(() => {
+                        successMessage.value = '';
+                    }, 3000);
+                }
+
+                async function refreshToken() {
+                    try {
+                        let refreshToken = localStorage.getItem("refreshToken");
+                        if (!refreshToken) throw new Error("No refresh token stored");
+                        currentView.value = "login"
+                        const res = await api.post("/auth/refresh", { refreshToken });
+                        let token = res.data.token;
+                        
+                        // Save new tokens
+                        localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
+                        setAuthToken(token);
+
+                        return token;
+                    } catch (err) {
+                        console.error("Refresh failed", err);
+                        logout(); // Clear storage and redirect to login
+                        throw err;
+                    }
+                }
+
+               
+                async function loadQuestions() {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    loading.value = true;
+                    let response;
+                    try {
+                        
+                        if (user.value.role === "GUEST") {
+                            response = await api.get('/guest/questions');
+                            let guestAccount = JSON.parse(localStorage.getItem("guest"))
+                            if (!guestAccount){
+                                let guestUser = { username: 'Guest',
+                                    role: 'GUEST',
+                                    coins: 0,
+                                    streak: 0,
+                                    level: 0,
+                                    points: 0,
+                                    region: 'none'
+                                }
+                                localStorage.setItem("guest", JSON.stringify(guestUser))
+                            }
+                        }else if (user.value.role === "USER" || user.value.role === "ADMIN"){
+                            response = await api.get('/question/random');
+                        }
+                        
+                        console.log(user.value.role)
+
+                        if (response.status === 200 || response.status === 201) {
+                            let fetchedQuestions = response.data.questions;
+                            questions.value = fetchedQuestions;
+                            currentQuestionIndex.value = 0;
+                            handleSuccess('Questions loaded successfully.');
+                        } else {
+                            throw new Error(response.data.message || 'Request failed.');
+                        }
+                    } catch (error) {
+                        handleApiError(error);
+                        // Fallback questions
+                        questions.value = [
+                            { id: 1, prompt: "Nigeria is the most populous country in Africa.", answer: true },
+                            { id: 2, prompt: "The currency of Sweden is the Euro.", answer: false },
+                            { id: 3, prompt: "The Alps mountain range spans across 8 European countries.", answer: true },
+                            { id: 4, prompt: "Angola is located in West Africa.", answer: false },
+                            { id: 5, prompt: "The official languages of South Africa include Afrikaans and English.", answer: true }
+                        ];
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function connectWallet () {
+                    let walletAddress = walletAdd.value
+                    
+                    loading.value = true;
+                    try {
+                        let response = await api.post(`/wallet/add`, {walletAddress});
+                        wallet = response.data.wallet.walletAddress
+                        handleSuccess("Wallet Added")
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function updateWallet () {
+                    let walletAddress = walletAdd.value
+                    
+                    loading.value = true;
+                    try {
+                        let response = await api.post(`/wallet/update`, {newWalletAddress});
+                        if (reponse.status === 200 || response.status === 201){
+                            wallet = response.data.wallet.walletAddress
+                            handleSuccess("Wallet Updated")
+                        }
+                        let wallet = response.data.wallet.walletAddress
+                        handleSuccess("Wallet Updated")
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function startGame() {
+                    currentView.value = 'game';
+                    try {
+                        errorMessage.value = ""
+                        await loadQuestions();
+                    } catch (error) {
+                        console.error("Failed to load questions:", error);
+                        handleApiError(error); 
+                    }
+                   
+                    timeLeft.value = 15;
+                    if (timer) clearInterval(timer);
+                    timer = setInterval(() => {
+                        timeLeft.value--;
+                        if (timeLeft.value <= 0) {
+                            nextQuestion();
+                        }
+                    }, 1000);
+                }
+                
+                async function loadWallet() {
+                    currentView.value = "wallet"
+                    loading.value = true
+                    try {
+                        const walletRes = await api.get("/wallet/getWallet");
+                        const response = await api.get("/wallet/transaction");
+
+                        let walletDb = response.data.transactions
+                        let walletA = walletRes.data.wallet.walletAddress;
+                        transactions.value = walletDb;
+                        wallet.value = walletA;
+                        handleSuccess("transactions loaded")
+                    } catch (error) {
+                        handleApiError(error)
+                    }
+                    loading.value = false
+                }
+
+
+               
+
+                const calculateLevel = (totalPoints) => {
+                    const BASE_POINTS = 100;
+                    const FACTOR = 1.3;
+
+
+                    let level = 0;
+                    let pointsNeeded = BASE_POINTS;
+
+                    while (totalPoints >= pointsNeeded) {
+                        totalPoints -= pointsNeeded;
+                        pointsNeeded = Math.floor(pointsNeeded * FACTOR);
+                        level++;
+                    }
+
+                    return level;
+                };                
+
+
+
+
+
+                async function checkAnswer(userAnswer) {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    loading.value = true;
+                    let questionId = currentQuestion.value.id
+                    let response;
+                    if (user.value.role === "GUEST"){
+                        try {
+                                response = await api.post('/guest/answer', {
+                                questionId: questionId,
+                                answer: userAnswer.toString()
+                            });
+                            if (response.status === 200 || response.status === 201) {
+                                if (response.data.answer === true) {
+                                   
+                                    let guest = JSON.parse(localStorage.getItem("guest"));
+                                    guest.points = guest.points + response.data.points
+                                    guest.level = calculateLevel(response.data.points)
+                                    user.value.points = guest.points;
+                                    user.value.level = guest.level;
+                                    localStorage.setItem("guest", JSON.stringify(guest))
+                                    handleSuccess("Correct")
+                                    nextQuestion()
+                                } else if(response.data.answer === false) {
+                                    errorMessage.value = "Wrong"
+                                    nextQuestion()
+                                }
+                            } else {
+                                throw new Error(response.data.message || "Request Failed");
+                            }
+                        }catch(error) {
+                            handleApiError(error)
+                            nextQuestion()
+                        }finally {
+                            loading.value = false;
+                            
+                        }
+                    
+                    
+                            
+                    }else{
+                        try {
+                                response = await api.post('/question/answer', {
+                                questionId: questionId,
+                                answer: userAnswer.toString()
+                            });
+                            if (response.status === 200 || response.status === 201) {
+                                if (response.data.answer === true) {
+                                    user.value.points = response.data.user.points;
+                                    user.value.level = response.data.user.level;
+                                    user.value.coins = response.data.user.coins;
+                                    handleSuccess("Correct")
+                                    nextQuestion()
+                                } else if(response.data.answer === false) {
+                                    errorMessage.value = "Wrong"
+                                    nextQuestion()
+                                }
+                            } else {
+                                throw new Error(response.data.message || "Request Failed");
+                            }
+                    } catch (error) {
+                        handleApiError(error)
+                    } finally {
+                        loading.value = false;
+                    }
+                    
+                    nextQuestion();
+                    }
+                    
+                }
+
+                function nextQuestion() {
+                    clearInterval(timer);
+                    
+                    if (currentQuestionIndex.value < questions.value.length - 1) {
+                        currentQuestionIndex.value++;
+                        timeLeft.value = 15;
+                        
+                        timer = setInterval(() => {
+                            timeLeft.value--;
+                            if (timeLeft.value <= 0) {
+                                nextQuestion();
+                            }
+                        }, 1000);
+                    } else {
+                       loadQuestions();
+                       
+                    }
+                }
+
+                async function loginWithGoogle() {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    try {
+                        loading.value = true;
+                        window.location.href = 'http://localhost:3000/auth/google';
+                    } catch (error) {
+                        handleApiError(error)
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+
+                async function withdrawCoins(){
+                    try {
+                        let response = await api.post("/wallet/withdraw", {
+                            usdt: user.value.usdt,
+                            walletAddress: walletAddress.value
+                        })
+
+                        if (response.status === 200){
+                            user.value.usdt = response.data.cryptoAmount.usdt
+
+                            handleSuccess("Withdrawal Successful");
+                        }
+                    } catch (error) {
+                        handleApiError(error)
+                    }
+                }
+
+                async function loadLeaderboard() {
+                    leaderboardTab.value = 'global'
+                    currentView.value = 'leaderboard'
+                    loading.value = true;
+                    try {
+                        if(user.value.role ==="GUEST"){
+                            let response = await api.get(`/leaderboard/all?limit=3`);
+                            leaderboard.value = response.data.users;
+                        } else {
+                            let response = await api.get(`/leaderboard/all`);
+                            leaderboard.value = response.data.users;
+                        }
+                        handleSuccess("Leaderboard loaded")
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function loadRegionLeaderboard() {
+                    leaderboardTab.value = 'regional'
+                    currentView.value = 'leaderboard'
+                    loading.value = true;
+                    try {
+                        let response = await api.get(`/leaderboard/region`);
+                        let users = response.data.users
+                        // Filter users by the selected region
+                        leaderboard.value = users.filter(player => 
+                            player.region === user.value.region
+                        );
+                        handleSuccess("Leaderboard loaded")
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function sendOtp() {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    
+                    if (!phoneNumber.value) {
+                        errorMessage.value = 'Please enter a phone number';
+                        return;
+                    }
+                    
+                    try {
+                        loading.value = true;
+                        const response = await api.post('/auth/otp/send', {
+                            phoneNumber: phoneNumber.value
+                        });
+                        
+                        if (response.status === 200 || response.status === 201) {
+                            showOtpField.value = true;
+                            handleSuccess(`OTP sent to ${phoneNumber.value}. OTP is ${response.data.code}`);
+                        } else {
+                            throw new Error(response.data.message || "Failed to send OTP");
+                        }
+                    } catch (error) {
+                        handleApiError(error);
+                        showOtpField.value = false;
+                    } finally {
+                        loading.value = false;
+                    }
+                }   
+
+
+                async function loadWallet() {
+                    currentView.value = "wallet"
+
+
+                    loading.value = true
+                    try {
+                        const walletRes = await api.get("/wallet/getWallet");
+                        const response = await api.get("/wallet/transaction");
+
+                        let walletDb = response.data.transactions
+                        let walletA = walletRes.data.wallet.walletAddress;
+                        transactions.value = walletDb;
+                        wallet.value = walletA;
+                        handleSuccess("transactions loaded")
+                    } catch (error) {
+                        handleApiError(error)
+                    }
+                    loading.value = false
+                }
+
+                async function verifyOtp() {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    
+                    const otpCode = otp.value.join('');
+                    if (otpCode.length !== 6) {
+                        errorMessage.value = 'Please enter a valid 6-digit code';
+                        return;
+                    }
+                    
+                    try {
+                        loading.value = true;
+                        const response = await api.post('/auth/otp/verify', {
+                            phoneNumber: phoneNumber.value,
+                            otp: otpCode
+                        });
+                        
+                        if (response.status === 200) {
+                            handleSuccess("Phone number verified successfully!");
+                            user.value = response.data.user
+                            let token = response.data.token;
+                            let refreshToken = response.data.refreshToken;
+                            localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
+                            setAuthToken(token);
+                            showOtpField.value = false;
+                            showPhoneLogin.value = false;
+                            currentView.value = 'home';
+                        } else {
+                            throw new Error(response.data.message || "Failed to verify OTP");
+                        }
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                async function loginWithEmail() {
+                     errorMessage.value = '';
+                     successMessage.value = '';
+                    try {
+                        loading.value = true;
+                        const response = await api.post('/auth/login', {
+                            email: email.value,
+                            password: password.value
+                        });
+                        if (response.status === 200) {
+                            handleSuccess("Logged in successfully!");
+                            user.value = response.data.user;
+                            currentView.value = 'home'
+                            let token = response.data.token;
+                            let refreshToken = response.data.refreshToken;
+                            localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
+                            setAuthToken(token);
+                        } else {
+                            throw new Error(response.message || "Failed to login");
+                        }
+                    } catch (error) {
+                        handleApiError(error)
+                    } finally {
+                        loading.value = false;
+                    }
+                }   
+                       
+                function goToLogin() {
+                    currentView.value = 'login';
+                    showSignup.value = false;
+                    showEmailLogin.value = false;
+                    showPhoneLogin.value = false;
+                }    
+
+                async function signupWithEmail() {
+                    errorMessage.value = '';
+                    successMessage.value = '';
+                    try {
+                        if (signupName.value && signupEmail.value && signupPassword.value && confirmPassword.value) {
+                            if (signupPassword.value !== confirmPassword.value) {
+                                alert("Passwords do not match");
+                                return;
+                            }
+                        }
+                        loading.value = true;
+                        const response = await api.post('/auth/register', {
+                            username: signupName.value,
+                            email: signupEmail.value,
+                            password: signupPassword.value,
+                            confirmPassword: confirmPassword.value,
+                            region: signupRegion.value,
+                            phoneNumber: signupPhone.value
+                        });
+
+                        if (response.status === 200 || response.status === 201) {
+                            handleSuccess("Sign up successfull!");
+                            user.value = response.data.user;
+                            currentView.value = 'home';
+                            let token = response.data.token;
+                            let refreshToken = response.data.refreshToken;
+                            localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
+                            setAuthToken(token);
+                        } else {
+                            throw new Error(response.message || "Failed to signup");
+                        }
+                    } catch (error) {
+                        handleApiError(error)
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+                function logout() {
+                    user.value = {
+                        username: 'Guest',
+                        role: 'GUEST',
+                        coins: 0,
+                        streak: 0,
+                        level: 0,
+                        points: 0,
+                        region: 'none'
+                    };
+                    currentView.value = 'home';
+                    isAdminView.value = false;
+                    localStorage.removeItem("auth")
+                }
+
+                function focusNext(event, index) {
+                    if (event.target.value.length === 1 && index < 6) {
+                        event.target.nextElementSibling.focus();
+                    }
+                }
+
+                function toggleDarkMode() {
+                    darkMode.value = !darkMode.value;
+                    document.body.classList.toggle('dark-mode', darkMode.value);
+                    localStorage.setItem('darkMode', darkMode.value);
+                }
+                
+                function setView(view) {
+                    currentView.value = view;
+                    isAdminView.value = view === 'admin';
+                }
+
+                // Admin functions
+                async function loadAllUsers() {
+                    loading.value = true;
+                    try {
+                        let response = await api.get("/admin/users")
+                        let users = response.data.users
+                        allAdminUsers.value = users
+                        adminStats.value.totalUsers = response.data.pagination.totalRecords;
+                        adminStats.value.guestUsers = 0;
+                        adminStats.value.normalUsers = response.data.pagination.normalUsers;
+                        adminStats.value.premiumUsers = response.data.pagination.premiumUsers;
+                    } catch (error) {
+                        handleApiErrorr(error)
+                    }
+                    setTimeout(() => {
+                        loading.value = false;
+                    }, 500);
+                }
+                
+                async function loadAllTransactions() {
+                    loading.value = true;
+                    try {
+                        let response = await api.get(`/admin/economy/transactions`);
+                        allAdminTransactions.value = response.data.transactions
+
+                        handleSuccess("Transactions Loaded")
+                    } catch (error) {
+                        handleApiError(error)
+                    }
+                    setTimeout(() => {
+                        loading.value = false;
+                    }, 500);
+                }
+                
+                async function loadAllQuestions() {
+                    loading.value = true;
+                    try {
+                        let response = await api.get("/admin/questions?limit=100")
+                        let questions = response.data.questions
+                        allAdminQuestions.value = questions
+                        
+                       
+                    } catch (error) {
+                        handleApiErrorr(error)
+                    }
+                    setTimeout(() => {
+                        loading.value = false;
+                    }, 500);
+                }
+
+                function toggleDifficulty(diff) {
+                    const index = newQuestion.value.difficulty.indexOf(diff);
+                    if (index === -1) {
+                        newQuestion.value.difficulty.push(diff);
+                    } else {
+                        newQuestion.value.difficulty.splice(index, 1);
+                    }
+                }
+                
+                function toggleRegion(r) {
+                    const index = newQuestion.value.region?.indexOf(r);
+                    if (index === -1) {
+                        newQuestion.value.region?.push(r);
+                    } else {
+                        newQuestion.value.region?.splice(index, 1);
+                    }
+                }
+                
+                function addOption() {
+                    newQuestion.value.options.push('');
+                }
+                
+                function removeOption(index) {
+                    newQuestion.value.options.splice(index, 1);
+                }
+                
+                async function addQuestion() {
+                    loading.value = true;
+                    errorMessage.value = '';
+                    
+
+                    try {
+                       
+                       
+                        const questionData = {
+                            prompt: newQuestion.value.prompt,
+                            category: newQuestion.value.category,
+
+                            difficulty: {
+                                set: [newQuestion.value.difficulty] 
+                            },
+                            answer: newQuestion.value.answer, 
+                            
+                            region: {
+                                set: [newQuestion.value.region]
+                            },
+                            options: {
+                                set: newQuestion.value.options
+                            }
+                        };
+                        
+                        console.log("Data being sent to server:", questionData);
+                        
+                        const response = await api.post(`/admin/questions/`, questionData);
+                        
+                        console.log("Server response:", response);
+                        
+                        if (response.status === 200 || response.status === 201) {
+                            handleSuccess('Question created successfully!');
+                            
+                            // Update the local question list
+                            const index = allAdminQuestions.value.findIndex(
+                                q => q.id === newQuestion.value.id
+                            );
+                            
+                            if (index !== -1) {
+                                allAdminQuestions.value[index] = {
+                                    ...newQuestion.value
+                                };
+                            }
+                            
+                            showAddQuestionForm.value = false;
+                        } else {
+                            throw new Error(response.data.message || 'Failed to update question');
+                        }
+                    } catch (error) {
+                        console.error("Update error:", error);
+                        
+                        if (error.response) {
+                            console.error("Server error response:", error.response);
+                            errorMessage.value = error.response.data.message || 
+                                                `Server error: ${error.response.status}`;
+                        } else if (error.request) {
+                            console.error("No response received:", error.request);
+                            errorMessage.value = "No response from server. Please check your connection.";
+                        } else {
+                            console.error("Request setup error:", error.message);
+                            errorMessage.value = error.message;
+                        }
+                    } finally {
+                        loading.value = false;
+                    }
+                
+                }
+                
+                function cancelQuestionForm() {
+                    showAddQuestionForm.value = false;
+                    newQuestion.value = {
+                        prompt: '',
+                        category: '',
+                        answer: '',
+                        difficulty: ['EASY'],
+                        regions: ['AFRICA'],
+                        options: ['']
+                    };
+                }
+                
+                function editQuestion(question) {
+                    editingQuestion.value = question;
+                   
+                    
+                    
+                    showEditModal.value = true;
+                }
+                
+                function toggleEditDifficulty(diff) {
+                    const index = editingQuestion.value.difficulty.indexOf(diff);
+                    if (index === -1) {
+                        editingQuestion.value.difficulty.push(diff);
+                    } else {
+                        editingQuestion.value.difficulty.splice(index, 1);
+                    }
+                }
+                
+                function toggleEditRegion(r) {
+                    const index = editingQuestion.value.region.indexOf(r);
+                    if (index === -1) {
+                        editingQuestion.value.region.push(r);
+                    } else {
+                        editingQuestion.value.region.splice(index, 1);
+                    }
+                }
+                
+                function addEditOption() {
+                    editingQuestion.value.options.push('');
+                }
+                
+                function removeEditOption(index) {
+                    editingQuestion.value.options.splice(index, 1);
+                }
+                
+             
+
+                async function updateQuestion() {
+                    loading.value = true;
+                    errorMessage.value = '';
+
+                    try {
+                        console.log("Sending update for question:", editingQuestion.value);
+                        
+                        if (!editingQuestion.value.id) {
+                            throw new Error("Question ID is missing");
+                        }
+                        
+                       
+                        const questionData = {
+                            prompt: editingQuestion.value.prompt,
+                            category: editingQuestion.value.category,
+                          
+                            difficulty: {
+                                set: [editingQuestion.value.difficulty] 
+                            },
+                            answer: editingQuestion.value.answer, 
+                            
+                            regions: {
+                                set: [editingQuestion.value.region]
+                            },
+                            options: {
+                                set: editingQuestion.value.options
+                            }
+                        };
+                        
+                        console.log("Data being sent to server:", questionData);
+                        
+                        const response = await api.post(`/admin/questions/${editingQuestion.value.id}`, questionData);
+                        
+                        console.log("Server response:", response);
+                        
+                        if (response.status === 200 || response.status === 201) {
+                            handleSuccess('Question updated successfully!');
+                            
+                            
+                            const index = allAdminQuestions.value.findIndex(
+                                q => q.id === editingQuestion.value.id
+                            );
+                            
+                            if (index !== -1) {
+                                allAdminQuestions.value[index] = {
+                                    ...editingQuestion.value
+                                };
+                            }
+                            
+                            showEditModal.value = false;
+                        } else {
+                            throw new Error(response.data.message || 'Failed to update question');
+                        }
+                    } catch (error) {
+                        console.error("Update error:", error);
+                        
+                        if (error.response) {
+                            console.error("Server error response:", error.response);
+                            errorMessage.value = error.response.data.message || 
+                                                `Server error: ${error.response.status}`;
+                        } else if (error.request) {
+                            console.error("No response received:", error.request);
+                            errorMessage.value = "No response from server. Please check your connection.";
+                        } else {
+                            console.error("Request setup error:", error.message);
+                            errorMessage.value = error.message;
+                        }
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
+
+                async function deleteQuestion(id) {
+                    if (!confirm('Are you sure you want to delete this question?')) return;
+                    
+                    let Qid = id
+                    try {
+                        let response = await api.delete(`/admin/questions/${Qid}`)
+
+
+                        if (response.status === 200 || response.status === 201){
+                            loadAllQuestions();
+                        }
+
+                    } catch (error) {
+                        handleApiError(error);
+                    }
+                   
+                    allAdminQuestions.value = allAdminQuestions.value.filter(q => q.id !== id);
+                    handleSuccess('Question deleted successfully!');
+                }
+                
+               
+                async function deleteUser(id) {
+                   if (!confirm('Are you sure you want to delete this user?')) return;
+                    
+                    let Qid = id
+                    try {
+                        let response = await api.delete(`/admin/users/${Qid}`)
+
+
+                        if (response.status === 200 || response.status === 201){
+                            loadAllUsers();
+                        }
+
+                    } catch (error) {
+                        handleApiError(error);
+                    }
+                }
+                
+                function formatDate(dateString) {
+                    return new Date(dateString).toLocaleDateString();
+                }
+
+                
+                const filteredQuestions = computed(() => {
+                    if (!questionSearch.value) return allAdminQuestions.value;
+                    
+                    return allAdminQuestions.value.filter(q => 
+                        q.prompt.toLowerCase()?.includes(questionSearch.value.toLowerCase()) 
+                    );
+                });
+                
+                const filteredUsers = computed(() => {
+                    if (!userSearch.value) return allAdminUsers.value;
+                    
+                    return allAdminUsers.value.filter(u => 
+                        u.username.toLowerCase()?.includes(userSearch.value.toLowerCase()) ||
+                        u.email.toLowerCase()?.includes(userSearch.value.toLowerCase())
+                    );
+                });
+                
+                const filteredTransactions = computed(() => {
+                    if (!transactionSearch.value) return allAdminTransactions.value;
+                    
+                    return allAdminTransactions.value.filter(t => 
+                        t.user.username.toLowerCase()?.includes(transactionSearch.value.toLowerCase())
+                    );
+                });
+
+                const currentQuestion = computed(() => {
+                    return questions.value[currentQuestionIndex.value] || {prompt: "", answer: false};
+                });
+
+                onMounted(async () => {
+                    successMessage.value = "";
+
+                    const url = new URL(window.location.href);
+
+                    let storedAuth = JSON.parse(localStorage.getItem('auth'));
+                    if(!storedAuth) {
+                        try{
+                            req = await api.get('http://localhost:3000/auth/tokens')
+                            const token = req.data.token;
+                            const refreshToken = req.data.refreshToken;
+
+                            localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
+                            setAuthToken(token); 
+                            storedAuth = JSON.parse(localStorage.getItem("auth"))
+                                
+                        } catch (error) {
+                            handleApiError(error)
+                        }
+                    }
+                    let auth = storedAuth ? storedAuth : null;
+                    let guestAcc = JSON.parse(localStorage.getItem("guest"))
+                    if (user.value.role === "GUEST" && guestAcc){
+                        user.value = guestAcc
+                    }
+
+                    // Check for saved dark mode preference
+                    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+                    darkMode.value = savedDarkMode;
+                    document.body.classList.toggle('dark-mode', savedDarkMode);
+
+                    if (!auth?.token) return;
+                    try {
+                        let response = await api.get("/profile/user")
+                        if (response.status === 200 || response.status === 201){
+                            user.value = response.data.user;
+                           
+                            handleSuccess("Logged in")
+                        }
+                    } catch (error) {
+                        handleApiError(error)
+                    }
+                    if (url.searchParams.get("google") === "true") {
+                         url.searchParams.delete("google");
+                         window.history.replaceState({}, "", url.toString());
+
+                       
+                         window.location.reload();
+
+                       
+                    }
+                    
+                    
+                });
+
+                return {
+                    // Main app state
+                    currentView,
+                    isAdminView,
+                    user,
+                    leaderboardTab,
+                    playerStats,
+                    questions,
+                    leaderboard,
+                    allUsers,
+                    score,
+                    currentQuestionIndex,
+                    timeLeft,
+                    showPhoneLogin,
+                    showEmailLogin,
+                    showOtpField,
+                    showSignup,
+                    phoneNumber,
+                    otp,
+                    email,
+                    password,
+                    signupName,
+                    signupEmail,
+                    signupPassword,
+                    confirmPassword,
+                    currentQuestion,
+                    signupRegion,
+                    signupPhone,
+                    loading,
+                    successMessage,
+                    errorMessage,
+                    convertAmount,
+                    convertCoins,
+                    transactions,
+                    walletAdd,
+                    wallet,
+                    darkMode,
+                    withdrawAmount,
+                    
+                    // Admin state
+                    adminTab,
+                    adminStats,
+                    allAdminUsers,
+                    allAdminQuestions,
+                    allAdminTransactions,
+                    showAddQuestionForm,
+                    showEditModal,
+                    questionSearch,
+                    userSearch,
+                    transactionSearch,
+                    newQuestion,
+                    editingQuestion,
+                    difficultyOptions,
+                    regionOptions,
+                    allUsers,
+                    
+                    // Computed
+                    filteredQuestions,
+                    filteredUsers,
+                    filteredTransactions,
+                    
+                    // Main app methods
+                    connectWallet,
+                    updateWallet,
+                    loadWallet,
+                    startGame,
+                    checkAnswer,
+                    loginWithGoogle,
+                    sendOtp,
+                    verifyOtp,
+                    loginWithEmail,
+                    signupWithEmail,
+                    logout,
+                    focusNext,
+                    goToLogin,
+                    setAuthToken,
+                    handleSuccess,
+                    loadLeaderboard,
+                    toggleDarkMode,
+                    loadRegionLeaderboard,
+                    loadWallet,
+                    setView,
+                    calculateLevel,
+                    withdrawCoins,
+                    
+                    // Admin methods
+                    loadAllUsers,
+                    loadAllTransactions,
+                    loadAllQuestions,
+                    toggleDifficulty,
+                    toggleRegion,
+                    addOption,
+                    removeOption,
+                    addQuestion,
+                    cancelQuestionForm,
+                    editQuestion,
+                    toggleEditDifficulty,
+                    toggleEditRegion,
+                    addEditOption,
+                    removeEditOption,
+                    updateQuestion,
+                    deleteQuestion,
+                    deleteUser,
+                    formatDate
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

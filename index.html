@@ -865,7 +865,8 @@
                     streak: 0,
                     level: 0,
                     points: 0,
-                    region: 'none'
+                    region: 'none',
+                    quesCount: 0,
                 });
                 const leaderboardTab = ref('global');
                 const score = ref(0);
@@ -1030,6 +1031,9 @@
                                 localStorage.setItem("guest", JSON.stringify(guestUser))
                             }
                         }else if (user.value.role === "USER" || user.value.role === "ADMIN"){
+                            if (JSON.parse(localStorage.getItem("auth"))){
+                                localStorage.removeItem("guest")
+                            }
                             response = await api.get('/question/random');
                         }
                         
@@ -1232,8 +1236,9 @@
                     if (user.value.role === "GUEST"){
                         if(user.value.quesCount === 10){
                             handleApiError("Max playes for today reached(10), Please Login to enjoy unlimited gameplay")
+                            currentView = "login"
                         }else{
-                             user.value.quesCount++
+                            user.value.quesCount = user.value.questCount + 1;
                         }
                        
                     }

@@ -1024,7 +1024,8 @@
                                     streak: 0,
                                     level: 0,
                                     points: 0,
-                                    region: 'none'
+                                    region: 'none',
+                                    quesCount: 0
                                 }
                                 localStorage.setItem("guest", JSON.stringify(guestUser))
                             }
@@ -1227,10 +1228,25 @@
                 function nextQuestion() {
                     clearInterval(timer);
                     
+                    
+                    if (user.value.role === "GUEST"){
+                        if(user.value.quesCount === 10){
+                            handleApiError("Max playes for today reached(10), Please Login to enjoy unlimited gameplay")
+                        }else{
+                             user.value.quesCount++
+                        }
+                       
+                    }
+
+
                     if (currentQuestionIndex.value < questions.value.length - 1) {
                         currentQuestionIndex.value++;
                         timeLeft.value = 15;
                         
+                         if (user.value.role === "GUEST"){
+                            user.value.quesCount++
+                         }
+
                         timer = setInterval(() => {
                             timeLeft.value--;
                             if (timeLeft.value <= 0) {

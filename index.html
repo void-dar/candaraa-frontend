@@ -295,7 +295,7 @@
                     
                     <div class="game-stats">
                         <div class="stat-item">
-                            <div class="stat-value">{{ currentQuestionIndex + 1 }}/{{ questions.length }}</div>
+                            <div class="stat-value">{{ currentQuestionIndex }}/{{ questions.length }}</div>
                             <div class="stat-label">Question</div>
                         </div>
                         <div class="stat-item">
@@ -1885,11 +1885,11 @@
                         handleApiError(error)
                     }
                     if (url.searchParams.get("google") === "true") {
-                         url.searchParams.delete("google");
-                         window.history.replaceState({}, "", url.toString());
+                        url.searchParams.delete("google");
+                        window.history.replaceState({}, "", url.toString());
 
-                       
-                         window.location.reload();
+                    
+                        window.location.reload();
 
                        
                     }

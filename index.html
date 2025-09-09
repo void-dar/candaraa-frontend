@@ -1238,7 +1238,7 @@
                             handleApiError("Max playes for today reached(10), Please Login to enjoy unlimited gameplay")
                             currentView = "login"
                         }else{
-                            user.value.quesCount = user.value.questCount + 1;
+                            user.value.quesCount = user.value.quesCount + 1;
                         }
                        
                     }
@@ -1501,7 +1501,8 @@
                         streak: 0,
                         level: 0,
                         points: 0,
-                        region: 'none'
+                        region: 'none',
+                        quesCount: 0
                     };
                     currentView.value = 'home';
                     isAdminView.value = false;

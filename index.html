@@ -294,7 +294,7 @@
                     </div>
                     
                     <div class="game-stats">
-                        <div class="stat-item">
+                        <div class="stat-item" v-if="user.role === 'GUEST'">
                             <div class="stat-value">{{ currentQuestionIndex }}/{{ questions.length }}</div>
                             <div class="stat-label">Question</div>
                         </div>

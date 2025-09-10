@@ -29,9 +29,7 @@
                     <i class="fas" :class="isAdminView ? 'fa-user-shield' : 'fa-user'"></i>
                     <span>{{ user ? user.username : 'Guest' }} ({{ user ? user.role : 'GUEST' }})</span>
                 </div>
-                <button class="theme-toggle" @click="toggleDarkMode">
-                    <i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
-                </button>
+               
             </div>
         </header>
 
@@ -164,7 +162,7 @@
                 </div>
 
                 <!-- Home View -->
-                <div class="view" :class="{ active: currentView === 'home' && !isAdminView }">
+                <div class="view main-box" :class="{ active: currentView === 'home' && !isAdminView }">
                     <div class="section-header">
                         <h2 class="section-title">
                             <i class="fas fa-home section-icon"></i>
@@ -172,7 +170,7 @@
                         </h2>
                     </div>
 
-                    <div class="card">
+                    <div class="card dep-main">
                         <p>Test your knowledge about African and European cultures with our engaging trivia game!</p>
                     </div>
 
@@ -180,7 +178,7 @@
                         <i class="fas fa-play"></i> Play Now
                     </button>
 
-                    <div class="card" v-if="user.role === 'GUEST'">
+                    <div class="card dep-main" v-if="user.role === 'GUEST'">
                         <h3 class="card-header">
                             <i class="fas fa-crown"></i>
                             Premium Benefits
@@ -283,33 +281,36 @@
 
                 <!-- Game View -->
                 <div class="view" :class="{ active: currentView === 'game' && !isAdminView }">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fas fa-gamepad section-icon"></i>
-                            Trivia Challenge
-                        </h2>
-                        <button class="btn btn-secondary btn-sm" @click="setView('home')">
+                    <div class="game-header">
+                        <div class="game-info">
+                            <div class="game-info-item">
+                                <span class="game-info-label">Question</span>
+                                <span class="game-info-value">{{ currentQuestionIndex + 1 }}/{{ questions.length }}</span>
+                            </div>
+                            <div class="game-info-item">
+                                <span class="game-info-label">Points</span>
+                                <span class="game-info-value">{{ user.points }}</span>
+                            </div>
+                            <div class="game-info-item">
+                                <span class="game-info-label">Coins</span>
+                                <span class="game-info-value">{{ user.coins }}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" @click="setView('home'); stopAudio(); toggleBackgroundAudio()">
                             <i class="fas fa-arrow-left"></i> Back
                         </button>
                     </div>
-                    
-                    <div class="game-stats">
-                        <div class="stat-item" v-if="user.role === 'GUEST'">
-                            <div class="stat-value">{{ currentQuestionIndex }}/{{ questions.length }}</div>
-                            <div class="stat-label">Question</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ user.points }}</div>
-                            <div class="stat-label">Points</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value">{{ timeLeft }}</div>
-                            <div class="stat-label">Seconds</div>
-                        </div>
-                    </div>
+                   
+                   
 
-                    <div class="question-card">
-                        <div class="question-text">{{ currentQuestion.prompt }}</div>
+                    <div class="question-container">
+                        <span class="question-category">{{ currentQuestion.category || 'General Knowledge' }}</span>
+                        <h2 class="question-text">{{ currentQuestion.prompt }}</h2>
+                        
+                        <div class="timer-container">
+                            <div class="timer-progress" :style="{ width: (timeLeft / 15) * 100 + '%' }"></div>
+                        </div>
+                        
                         <div class="answer-buttons">
                             <button class="answer-btn answer-true" @click="checkAnswer(true)">
                                 <i class="fas fa-check"></i> TRUE
@@ -318,8 +319,28 @@
                                 <i class="fas fa-times"></i> FALSE
                             </button>
                         </div>
+                    </div> 
+
+                
+                    <div class="leaderboard-widget">
+                        <h3 class="leaderboard-title">
+                            <i class="fas fa-trophy"></i> Your Ranking
+                        </h3>
+                        <ul class="leaderboard-list">
+                            <li class="leaderboard-item" v-for="(player, index) in topPlayers" :key="player.id" 
+                                :class="{ 'current-user': player.id === user.id }">
+                                <span class="leaderboard-rank">{{ index + 1 }}</span>
+                                <span class="leaderboard-name">{{ player.username }}</span>
+                                <span class="leaderboard-score">{{ player.points }} pts</span>
+                            </li>
+                        </ul>
                     </div>
+                     
+                 
+
                 </div>
+                
+                
 
                 <!-- Leaderboard View -->
                 <div class="view" :class="{ active: currentView === 'leaderboard' && !isAdminView }">
@@ -894,7 +915,7 @@
                 const convertCoins = ref(0);
                 const transactions = ref([]);
                 const walletAdd = ref('')
-                const darkMode = ref(false);
+                
                 const wallet = ref("");
                 const playerStats = ref({
                     streak: 0,
@@ -934,10 +955,13 @@
                     options: ['']
                 });
                 
+                
                 const editingQuestion = ref({
 
                 });
-                const editingQuestionIndex = ref(null)
+
+              
+                const editingQuestionIndex = ref(null);
                 
                 const difficultyOptions = ['GUEST', 'EASY', 'MEDIUM', 'HARD'];
                 const regionOptions = ['AFRICA', 'EUROPE'];
@@ -987,6 +1011,8 @@
                     }, 3000);
                 }
 
+                
+
                 async function refreshToken() {
                     try {
                         let refreshToken = localStorage.getItem("refreshToken");
@@ -1011,6 +1037,7 @@
                 async function loadQuestions() {
                     errorMessage.value = '';
                     successMessage.value = '';
+                    playRandomAudio();
                     loading.value = true;
                     let response;
                     try {
@@ -1098,6 +1125,7 @@
 
                 async function startGame() {
                     currentView.value = 'game';
+                    loadPlayLeaderboard();
                     try {
                         errorMessage.value = ""
                         await loadQuestions();
@@ -1107,13 +1135,16 @@
                     }
                    
                     timeLeft.value = 15;
-                    if (timer) clearInterval(timer);
-                    timer = setInterval(() => {
+                    
+                    
+                    if (window.timer) clearInterval(window.timer);
+                    window.timer = setInterval(() => {
                         timeLeft.value--;
                         if (timeLeft.value <= 0) {
                             nextQuestion();
                         }
                     }, 1000);
+                
                 }
                 
                 async function loadWallet() {
@@ -1179,9 +1210,11 @@
                                     user.value.points = guest.points;
                                     user.value.level = guest.level;
                                     localStorage.setItem("guest", JSON.stringify(guest))
-                                    handleSuccess("Correct")
+                                    handleSuccess(`Correct ${response.data.reward}`)
+                                    correctAnswer()
                                     nextQuestion()
                                 } else if(response.data.answer === false) {
+                                    wrongAnswer()
                                     errorMessage.value = "Wrong"
                                     nextQuestion()
                                 }
@@ -1209,9 +1242,11 @@
                                     user.value.points = response.data.user.points;
                                     user.value.level = response.data.user.level;
                                     user.value.coins = response.data.user.coins;
-                                    handleSuccess("Correct")
+                                    handleSuccess(`Correct +${response.data.reward}`)
+                                    correctAnswer()
                                     nextQuestion()
                                 } else if(response.data.answer === false) {
+                                    wrongAnswer()
                                     errorMessage.value = "Wrong"
                                     nextQuestion()
                                 }
@@ -1314,6 +1349,26 @@
                         loading.value = false;
                     }
                 }
+
+
+                async function loadPlayLeaderboard(){
+                    loading.value = true;
+                    try {
+                        if(user.value.role ==="GUEST"){
+                            let response = await api.get(`/leaderboard/all?limit=3`);
+                            leaderboard.value = response.data.users;
+                        } else {
+                            let response = await api.get(`/leaderboard/all`);
+                            leaderboard.value = response.data.users;
+                        }
+                        
+                    } catch (error) {
+                        handleApiError(error);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+                
 
                 async function loadRegionLeaderboard() {
                     leaderboardTab.value = 'regional'
@@ -1515,11 +1570,6 @@
                     }
                 }
 
-                function toggleDarkMode() {
-                    darkMode.value = !darkMode.value;
-                    document.body.classList.toggle('dark-mode', darkMode.value);
-                    localStorage.setItem('darkMode', darkMode.value);
-                }
                 
                 function setView(view) {
                     currentView.value = view;
@@ -1851,7 +1901,103 @@
                         u.email.toLowerCase()?.includes(userSearch.value.toLowerCase())
                     );
                 });
+
+                let currentAudio = null;
+                let bgAudio = null;
+                let bgPlaying = false;
+
+                const audios = [
+                    '/frontend/audio/quiz-background-loop-thinking-news-275636.mp3',
+                    '/frontend/audio/quiz-countdown-194417.mp3',
+                    '/frontend/audio/quiz-music-158558.mp3'
+                ];
+
+                const bgAud = [
+                    '/frontend/bg-audio/calm-soft-background-music-398280.mp3',
+                    '/frontend/bg-audio/soft-background-music-401914.mp3',
+                    '/frontend/bg-audio/soft-piano-music-398426.mp3'
+                ];
+
+              
+                function startBackgroundAudio() {
+                    if (bgAudio) {
+                        bgAudio.pause();
+                        bgAudio.currentTime = 0;
+                    }
+
+                    const randomIndex = Math.floor(Math.random() * bgAud.length);
+                    bgAudio = new Audio(bgAud[randomIndex]);
+                    bgAudio.loop = true;
+                    bgAudio.volume = 0.3;
+                    bgAudio.play();
+
+                    bgPlaying = true;
+                }
+
+                function playRandomAudio() {
+                    // Pause background audio
+                    if (bgPlaying && bgAudio) {
+                        bgAudio.pause();
+                        bgPlaying = false;
+                    }
+
+                    // Stop current game audio if already playing
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio.currentTime = 0;
+                    }
+
+                    const randomIndex = Math.floor(Math.random() * audios.length);
+                    currentAudio = new Audio(audios[randomIndex]);
+                    currentAudio.loop = true;
+                    currentAudio.play();
+                }
+
+                function stopAudio() {
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio.currentTime = 0;
+                        currentAudio = null;
+                    }
+
+                    // Resume background audio
+                    if (bgAudio && !bgPlaying) {
+                        bgAudio.play();
+                        bgPlaying = true;
+                    }
+                }
+
                 
+
+                function wrongAnswer(){
+                    let audio = new Audio('/frontend/soundEffects/wrong-47985.mp3')
+                    audio.volume = 1
+                    audio.play()
+                }
+                
+
+                function correctAnswer(){
+                    let audio = new Audio('/frontend/soundEffects/correct-6033.mp3')
+                    audio.volume = 1
+                    audio.play()
+                }
+
+                
+
+                
+
+                const topPlayers = computed(() => {
+                    // Show top 3 players plus the current user if not in top 3
+                    const topThree = leaderboard.value.slice(0, 3);
+                    const currentUserInLeaderboard = leaderboard.value.find(player => player.id === user.value.id);
+                    
+                    if (!currentUserInLeaderboard || topThree.some(player => player.id === user.value.id)) {
+                        return topThree;
+                    }
+                    
+                    return [...topThree, currentUserInLeaderboard];
+                });
+
                 const filteredTransactions = computed(() => {
                     if (!transactionSearch.value) return allAdminTransactions.value;
                     
@@ -1865,6 +2011,7 @@
                 });
 
                 onMounted(async () => {
+                    startBackgroundAudio()
                     successMessage.value = "";
 
                     const url = new URL(window.location.href);
@@ -1890,10 +2037,7 @@
                         user.value = guestAcc
                     }
 
-                    // Check for saved dark mode preference
-                    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-                    darkMode.value = savedDarkMode;
-                    document.body.classList.toggle('dark-mode', savedDarkMode);
+            
 
                     if (!auth?.token) return;
                     try {
@@ -1955,8 +2099,10 @@
                     transactions,
                     walletAdd,
                     wallet,
-                    darkMode,
+                    
+                   
                     withdrawAmount,
+                    topPlayers,
                     
                     // Admin state
                     adminTab,
@@ -1997,12 +2143,17 @@
                     setAuthToken,
                     handleSuccess,
                     loadLeaderboard,
-                    toggleDarkMode,
+                    playRandomAudio,
+                    stopAudio,
+                    startBackgroundAudio,
+                    correctAnswer,
+                    wrongAnswer,
                     loadRegionLeaderboard,
                     loadWallet,
                     setView,
                     calculateLevel,
                     withdrawCoins,
+                    loadPlayLeaderboard,
                     
                     // Admin methods
                     loadAllUsers,

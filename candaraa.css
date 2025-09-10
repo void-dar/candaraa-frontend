@@ -101,7 +101,7 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: url("/frontend/stock-vector-quiz-and-question-marks-trivia-night-quiz-symbol-neon-sign-night-online-game-with-questions-2052894734.jpg");
+            background: url("stock-vector-quiz-and-question-marks-trivia-night-quiz-symbol-neon-sign-night-online-game-with-questions-2052894734.jpg");
             color: var(--text-primary);
             background-size: cover;   /* make it fill the div */
             background-position: center; /* center it */

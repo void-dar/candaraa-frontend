@@ -1,6 +1,6 @@
 // Cache version names
-const STATIC_CACHE = 'static-assets-v1';
-const DYNAMIC_CACHE = 'dynamic-pages-v1';
+const STATIC_CACHE = 'static-assets-v2';
+const DYNAMIC_CACHE = 'dynamic-pages-v2';
 
 // List of static assets to cache on install
 const STATIC_ASSETS = [
@@ -9,6 +9,16 @@ const STATIC_ASSETS = [
   '/offline.html',   // optional offline fallback
   '/favicon.png',
   '/candaraa.css',
+  'stock-vector-quiz-and-question-marks-trivia-night-quiz-symbol-neon-sign-night-online-game-with-questions-2052894734.jpg',
+  '/soundEffects/correct-6033.mp3',
+  '/soundEffects/wrong-47985.mp3',
+  '/bg-audio/calm-soft-background-music-398280.mp3',
+  '/bg-audio/soft-background-music-401914.mp3',
+  '/bg-audio/soft-piano-music-398426.mp3',
+  '/audio/quiz-background-loop-thinking-news-275636.mp3',
+  '/audio/quiz-countdown-194417.mp3',
+  '/audio/quiz-music-158558.mp3',
+
 ];
 
 // Install event: cache static assets

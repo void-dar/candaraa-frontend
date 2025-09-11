@@ -1195,76 +1195,54 @@
                     errorMessage.value = '';
                     successMessage.value = '';
                     loading.value = true;
-                    let questionId = currentQuestion.value.id
-                    let response;
-                    if (user.value.role === "GUEST"){
-                        try {
-                                response = await api.post('/guest/answer', {
-                                questionId: questionId,
-                                answer: userAnswer.toString()
-                            });
-                            if (response.status === 200 || response.status === 201) {
-                                if (response.data.answer === true) {
-                                   
-                                    let guest = JSON.parse(localStorage.getItem("guest"));
-                                    guest.points = guest.points + response.data.points
-                                    guest.level = calculateLevel(response.data.points)
-                                    user.value.points = guest.points;
-                                    user.value.level = guest.level;
-                                    localStorage.setItem("guest", JSON.stringify(guest))
-                                    handleSuccess(`Correct ${response.data.reward}`)
-                                    correctAnswer()
-                                    nextQuestion()
-                                } else if(response.data.answer === false) {
-                                    wrongAnswer()
-                                    errorMessage.value = "Wrong"
-                                    nextQuestion()
-                                }
-                            } else {
-                                throw new Error(response.data.message || "Request Failed");
+
+                    const questionId = currentQuestion.value.id;
+
+                    
+                    nextQuestion();
+
+                    try {
+                        const endpoint = user.value.role === "GUEST" ? "/guest/answer" : "/question/answer";
+                        const response = await api.post(endpoint, {
+                        questionId,
+                        answer: userAnswer.toString(),
+                        });
+
+                        if (response.status === 200 || response.status === 201) {
+                        const data = response.data;
+
+                        if (data.answer === true) {
+                            if (user.value.role === "GUEST") {
+                            let guest = JSON.parse(localStorage.getItem("guest")) || { points: 0, level: 1 };
+
+                            guest.points = (guest.points || 0) + (data.points || 0);
+                            guest.level = calculateLevel(guest.points);
+
+                            user.value.points = guest.points;
+                            user.value.level  = guest.level;
+
+                            localStorage.setItem("guest", JSON.stringify(guest));
+                            } else if (data.user) {
+                            user.value.points = data.user.points ?? user.value.points;
+                            user.value.level  = data.user.level  ?? user.value.level;
+                            user.value.coins  = data.user.coins  ?? user.value.coins;
                             }
-                        }catch(error) {
-                            handleApiError(error)
-                            nextQuestion()
-                        }finally {
-                            loading.value = false;
-                            
+
+                            handleSuccess(`Correct +${data.reward}`);
+                            correctAnswer();
+                        } else {
+                            wrongAnswer();
+                            errorMessage.value = "Wrong";
                         }
-                    
-                    
-                            
-                    }else{
-                        try {
-                                response = await api.post('/question/answer', {
-                                questionId: questionId,
-                                answer: userAnswer.toString()
-                            });
-                            if (response.status === 200 || response.status === 201) {
-                                if (response.data.answer === true) {
-                                    user.value.points = response.data.user.points;
-                                    user.value.level = response.data.user.level;
-                                    user.value.coins = response.data.user.coins;
-                                    handleSuccess(`Correct +${response.data.reward}`)
-                                    correctAnswer()
-                                    nextQuestion()
-                                } else if(response.data.answer === false) {
-                                    wrongAnswer()
-                                    errorMessage.value = "Wrong"
-                                    nextQuestion()
-                                }
-                            } else {
-                                throw new Error(response.data.message || "Request Failed");
-                            }
+                        } else {
+                        throw new Error(response.data.message || "Request Failed");
+                        }
                     } catch (error) {
-                        handleApiError(error)
+                        handleApiError(error);
                     } finally {
                         loading.value = false;
                     }
-                    
-                    nextQuestion();
                     }
-                    
-                }
 
                 function nextQuestion() {
                     clearInterval(timer);
@@ -1274,8 +1252,7 @@
                         if(user.value.quesCount === 10){
                            errorMessage.value = "Max plays for today reached(10), Please Login to enjoy unlimited gameplay"
                             currentView.value = "login"
-                        }else{
-                            user.value.quesCount = user.value.quesCount + 1;
+                            return
                         }
                        
                     }
@@ -2030,7 +2007,7 @@
                             storedAuth = JSON.parse(localStorage.getItem("auth"))
                                 
                         } catch (error) {
-                            handleApiError(error)
+                            
                         }
                     }
                     let auth = storedAuth ? storedAuth : null;

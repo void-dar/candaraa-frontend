@@ -1990,56 +1990,65 @@
                 });
 
                 onMounted(async () => {
-                    startBackgroundAudio()
+                    startBackgroundAudio();
                     successMessage.value = "";
 
                     const url = new URL(window.location.href);
 
-                    let storedAuth = JSON.parse(localStorage.getItem('auth'));
-                    if(!storedAuth) {
-                        try{
-                            req = await api.get('https://candaraa-app.onrender.com/auth/tokens')
-                            const token = req.data.token;
-                            const refreshToken = req.data.refreshToken;
+                    // --- Step 1: Load tokens from localStorage ---
+                    let storedAuth = JSON.parse(localStorage.getItem("auth"));
 
-                            localStorage.setItem("auth", JSON.stringify({token, refreshToken}));
-                            setAuthToken(token); 
-                            storedAuth = JSON.parse(localStorage.getItem("auth"))
-                                
+                    // --- Step 2: If no tokens, fetch new ones from backend ---
+                   
+                        try {
+                            const { data } = await api.get("https://candaraa-app.onrender.com/auth/tokens");
+                            const { token, refreshToken } = data;
+
+                            // Save fresh tokens
+                            localStorage.setItem("auth", JSON.stringify({ token, refreshToken }));
+                            setAuthToken(token);
+
+                            storedAuth = { token, refreshToken };
                         } catch (error) {
-                            
+                            console.error("Failed to fetch initial tokens:", error);
                         }
-                    }
-                    let auth = storedAuth ? storedAuth : null;
-                    let guestAcc = JSON.parse(localStorage.getItem("guest"))
-                    if (user.value.role === "GUEST" && guestAcc){
-                        user.value = guestAcc
+                    
+
+                    // --- Step 3: Restore guest account if present ---
+                    const guestAcc = JSON.parse(localStorage.getItem("guest"));
+                    if (user.value.role === "GUEST" && guestAcc) {
+                        user.value = guestAcc;
                     }
 
-            
+                    // --- Step 4: If token exists, try fetching user profile ---
+                    if (storedAuth?.token) {
+                        try {
+                            const response = await api.get("/profile/user");
 
-                    if (!auth?.token) return;
-                    try {
-                        let response = await api.get("/profile/user")
-                        if (response.status === 200 || response.status === 201){
-                            user.value = response.data.user;
-                           
-                            handleSuccess("Logged in")
+                            if (response.status === 200 || response.status === 201) {
+                                user.value = response.data.user;
+
+                                // 🔑 Always update tokens on login
+                                localStorage.setItem("auth", JSON.stringify({
+                                    token: storedAuth.token,
+                                    refreshToken: storedAuth.refreshToken
+                                }));
+                                setAuthToken(storedAuth.token);
+
+                                handleSuccess("Logged in");
+                            }
+                        } catch (error) {
+                            handleApiError(error);
                         }
-                    } catch (error) {
-                        handleApiError(error)
                     }
+
+                    // --- Step 5: Handle Google login redirect ---
                     if (url.searchParams.get("google") === "true") {
                         url.searchParams.delete("google");
                         window.history.replaceState({}, "", url.toString());
 
-                    
                         window.location.reload();
-
-                       
                     }
-                    
-                    
                 });
 
                 return {

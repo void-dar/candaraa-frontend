@@ -1284,8 +1284,8 @@
         .timer-progress {
             height: 100%;
             background: linear-gradient(to right, var(--primary), var(--secondary));
-            border-radius: 3px;
-            transition: width 1s linear;
+            border-radius: 3px 0 0 3px;
+            transition: width 0.1s linear;
         }
 
         .answer-buttons {

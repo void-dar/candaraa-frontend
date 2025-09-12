@@ -298,7 +298,7 @@
                                 <span class="game-info-value">{{ user.coins }}</span>
                             </div>
                         </div>
-                        <button class="btn btn-secondary btn-sm" @click="setView('home'); stopAudio(); toggleBackgroundAudio()">
+                        <button class="btn btn-secondary btn-sm" @click="setView('home'); stopAudio(); startBackgroundAudio()">
                             <i class="fas fa-arrow-left"></i> Back
                         </button>
                     </div>
@@ -310,7 +310,7 @@
                         <h2 class="question-text">{{ currentQuestion.prompt }}</h2>
                         
                         <div class="timer-container">
-                            <div class="timer-progress" :style="{ width: (timeLeft / 15) * 100 + '%' }"></div>
+                            <div class="timer-progress" :style="{ width: (timeLeft / 20) * 100 + '%' }"></div>
                         </div>
                         
                         <div class="answer-buttons">
@@ -894,7 +894,7 @@
                 const leaderboardTab = ref('global');
                 const score = ref(0);
                 const currentQuestionIndex = ref(0);
-                const timeLeft = ref(15)
+                const timeLeft = ref(20)
                 const showPhoneLogin = ref(false);
                 const showEmailLogin = ref(false);
                 const showOtpField = ref(false);
@@ -916,7 +916,8 @@
                 const convertAmount = ref(0);
                 const convertCoins = ref(0);
                 const transactions = ref([]);
-                const walletAdd = ref('')
+                const walletAdd = ref('');
+                
                 
                 const wallet = ref("");
                 const playerStats = ref({
@@ -961,6 +962,8 @@
                 const editingQuestion = ref({
 
                 });
+
+                
 
               
                 const editingQuestionIndex = ref(null);
@@ -1007,6 +1010,14 @@
 
                 function handleSuccess(message){
                     successMessage.value = message
+
+                    setTimeout(() => {
+                        successMessage.value = '';
+                    }, 3000);
+                }
+
+                function handleFailure(message){
+                    errorMessage.value = message
 
                     setTimeout(() => {
                         successMessage.value = '';
@@ -1136,17 +1147,26 @@
                         handleApiError(error); 
                     }
                    
-                    timeLeft.value = 15;
+                    timeLeft.value = 20;
                     
                     
-                    if (window.timer) clearInterval(window.timer);
-                    window.timer = setInterval(() => {
-                        timeLeft.value--;
-                        if (timeLeft.value <= 0) {
-                            nextQuestion();
+                    timerId = setInterval(() => {
+                        if (timeLeft.value > 0) {
+                        timeLeft.value = Math.max(timeLeft.value - 0.1, 0); // decrease smoothly
+                        } else {
+                        clearInterval(timerId);
                         }
-                    }, 1000);
-                
+                    }, 100); // update every 100ms
+                }
+
+
+                function resetTimer() {
+                    const el = document.querySelector('.timer-progress');
+                    el.style.transition = 'none';
+                    timeLeft.value = 20; // reset instantly
+                    requestAnimationFrame(() => {
+                        el.style.transition = 'width 1s linear';
+                    });
                 }
                 
                 async function loadWallet() {
@@ -1191,58 +1211,69 @@
 
 
 
-                async function checkAnswer(userAnswer) {
+                function checkAnswer(userAnswer) {
                     errorMessage.value = '';
                     successMessage.value = '';
-                    loading.value = true;
+        
 
                     const questionId = currentQuestion.value.id;
+                    const question = currentQuestion.value;
 
-                    
+
+                    // Immediately go to next question
                     nextQuestion();
 
-                    try {
-                        const endpoint = user.value.role === "GUEST" ? "/guest/answer" : "/question/answer";
-                        const response = await api.post(endpoint, {
+                    // Handle local correctness instantly
+                    if (question.answer?.toString() === userAnswer?.toString()) {
+                      
+                        handleSuccess("Correct");
+                        correctAnswer();
+                    } else {
+                        handleFailure("Wrong");
+                        wrongAnswer();
+                    }
+
+                    console.log(currentQuestion.value.prompt + " " + userAnswer)
+
+                    // Background request (fire-and-forget)
+                    const endpoint = user.value.role === "GUEST" ? "/guest/answer" : "/question/answer";
+                    api.post(endpoint, {
                         questionId,
                         answer: userAnswer.toString(),
-                        });
-
+                    })
+                    .then((response) => {
                         if (response.status === 200 || response.status === 201) {
-                        const data = response.data;
+                            const data = response.data;
 
-                        if (data.answer === true) {
+                            if (data.answer === true) {
                             if (user.value.role === "GUEST") {
-                            let guest = JSON.parse(localStorage.getItem("guest")) || { points: 0, level: 1 };
+                                let guest = JSON.parse(localStorage.getItem("guest")) || { points: 0, level: 1 };
 
-                            guest.points = (guest.points || 0) + (data.points || 0);
-                            guest.level = calculateLevel(guest.points);
+                                guest.points = (guest.points || 0) + (data.points || 0);
+                                guest.level = calculateLevel(guest.points);
 
-                            user.value.points = guest.points;
-                            user.value.level  = guest.level;
+                                user.value.points = guest.points;
+                                user.value.level  = guest.level;
 
-                            localStorage.setItem("guest", JSON.stringify(guest));
+                                localStorage.setItem("guest", JSON.stringify(guest));
                             } else if (data.user) {
-                            user.value.points = data.user.points ?? user.value.points;
-                            user.value.level  = data.user.level  ?? user.value.level;
-                            user.value.coins  = data.user.coins  ?? user.value.coins;
+                                user.value.points = data.user.points ?? user.value.points;
+                                user.value.level  = data.user.level  ?? user.value.level;
+                                user.value.coins  = data.user.coins  ?? user.value.coins;
                             }
-
-                            handleSuccess(`Correct`);
-                            correctAnswer();
+                            }
                         } else {
-                            wrongAnswer();
-                            errorMessage.value = "Wrong";
+                            throw new Error(response.data.message || "Request Failed");
                         }
-                        } else {
-                        throw new Error(response.data.message || "Request Failed");
-                        }
-                    } catch (error) {
+                    })
+                    .catch((error) => {
                         handleApiError(error);
-                    } finally {
+                    })
+                    .finally(() => {
                         loading.value = false;
-                    }
-                    }
+                    });
+                }
+
 
                 function nextQuestion() {
                     clearInterval(timer);
@@ -1260,18 +1291,20 @@
 
                     if (currentQuestionIndex.value < questions.value.length - 1) {
                         currentQuestionIndex.value++;
-                        timeLeft.value = 15;
+                        resetTimer()
+                        timeLeft.value = 20;
                         
-                         if (user.value.role === "GUEST"){
+                        if (user.value.role === "GUEST"){
                             user.value.quesCount++
-                         }
+                        }
 
-                        timer = setInterval(() => {
-                            timeLeft.value--;
-                            if (timeLeft.value <= 0) {
-                                nextQuestion();
+                        timerId = setInterval(() => {
+                            if (timeLeft.value > 0) {
+                                timeLeft.value = Math.max(timeLeft.value - 0.1, 0); // decrease smoothly
+                            } else {
+                                clearInterval(timerId);
                             }
-                        }, 1000);
+                        }, 100); // update every 100ms
                     } else {
                        loadQuestions();
                        
@@ -2136,6 +2169,7 @@
                     calculateLevel,
                     withdrawCoins,
                     loadPlayLeaderboard,
+                    handleFailure,
                     
                     // Admin methods
                     loadAllUsers,

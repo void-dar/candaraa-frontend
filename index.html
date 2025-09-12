@@ -963,6 +963,8 @@
 
                 });
 
+                let timerId = null
+
                 
 
               
@@ -1137,6 +1139,7 @@
                 }
 
                 async function startGame() {
+                    
                     currentView.value = 'game';
                     loadPlayLeaderboard();
                     try {
@@ -1155,6 +1158,7 @@
                         timeLeft.value = Math.max(timeLeft.value - 0.1, 0); // decrease smoothly
                         } else {
                         clearInterval(timerId);
+                        nextQuestion()
                         }
                     }, 100); // update every 100ms
                 }
@@ -1165,7 +1169,7 @@
                     el.style.transition = 'none';
                     timeLeft.value = 20; // reset instantly
                     requestAnimationFrame(() => {
-                        el.style.transition = 'width 1s linear';
+                        el.style.transition = 'width 0.1s linear';
                     });
                 }
                 
@@ -1276,7 +1280,7 @@
 
 
                 function nextQuestion() {
-                    clearInterval(timer);
+                    clearInterval(timerId);
                     
                     
                     if (user.value.role === "GUEST"){
@@ -1303,6 +1307,7 @@
                                 timeLeft.value = Math.max(timeLeft.value - 0.1, 0); // decrease smoothly
                             } else {
                                 clearInterval(timerId);
+                                nextQuestion()
                             }
                         }, 100); // update every 100ms
                     } else {
@@ -2170,6 +2175,7 @@
                     withdrawCoins,
                     loadPlayLeaderboard,
                     handleFailure,
+                    resetTimer,
                     
                     // Admin methods
                     loadAllUsers,
